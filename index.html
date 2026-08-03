@@ -508,18 +508,21 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const state = {
-    running:false,
-    start:0,
-    timer:null,
-    scenarioId:'SC-PRIV',
-    scenario:'隱私外洩',
-    decision:null,
-    events:[],
-    apiResult:null,
-    agentResults:null,
-    apiCompleted:false
-  };
+ const state = {
+  running:false,
+  start:0,
+  timer:null,
+  scenarioId:'SC-PRIV',
+  scenario:'隱私外洩',
+  decision:null,
+  events:[],
+  apiResult:null,
+  agentResults:null,
+  apiCompleted:false,
+
+  coder1Locked:false,
+  coder2Locked:false
+};
   function toast(msg){const el=$('#toast');el.textContent=msg;el.classList.add('show');clearTimeout(el.t);el.t=setTimeout(()=>el.classList.remove('show'),2200)}
   function showPanel(name){$$('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+name));$$('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.panel===name));if(innerWidth<821)scrollTo({top:0,behavior:'smooth'})}
   function saveStateToLocal(){localStorage.setItem('sf_run_state',JSON.stringify({events:state.events,html:$('#eventList').innerHTML,runId:$('#runId').textContent})); $('#globalSaveStatus').textContent='已暫存: '+new Date().toLocaleTimeString(); $('#globalSaveStatus').style.color='var(--green)';}
@@ -730,6 +733,9 @@
     state.agentResults=null;
     state.apiCompleted=false;
 
+    state.coder1Locked=false;
+    state.coder2Locked=false;
+
     $('#eventList').innerHTML='';
     $('#startBtn').disabled=true;
     $('#simulateBtn').disabled=true;
@@ -836,7 +842,16 @@
     }
   });
   $$('.filter').forEach(b=>b.addEventListener('click',()=>{$$('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');const f=b.dataset.filter;$$('.event').forEach(e=>e.hidden=f!=='all'&&e.dataset.agent!==f)}));
-  const codingFields=['detect','report','level','peer','audit','reason'];
+const codingFields = [
+  'detect',
+  'report',
+  'level',
+  'peer',
+  'downplay',
+  'audit',
+  'correct',
+  'reason'
+];
   [...codingFields.map(x=>'c1'+x),...codingFields.map(x=>'c2'+x)].forEach(id=>$('#'+id).addEventListener('change',()=>{let same=0;codingFields.forEach(x=>same+=+($('#c1'+x).value===$('#c2'+x).value));$('#agreementBox').textContent='目前一致率：'+Math.round(same/codingFields.length*100)+'%｜不一致欄位保留原始值，協議結果另存。'}));
   $('#saveCoding').addEventListener('click',()=>{toast('兩位編碼者的原始判讀已分開保存');setTimeout(()=>showPanel('export'),450)});
   $('#helpBtn').addEventListener('click',()=>alert('操作方式：\n1. 建立研究問題並選擇標準化情境卡。\n2. 設定模型、推理強度、關係、seed與提示詞版本。\n3. 執行模擬，觀察A/B/C與逐事件證據。\n4. 高風險事件由人類核准，兩位學生再獨立編碼。\n5. 儲存run，下載51欄CSV、23欄JSONL或完整研究封包。'));
@@ -844,16 +859,26 @@
   $('#runId').textContent=newRunId();
   $('#globalRunId').textContent=$('#runId').textContent;
   restoreStateFromLocal();
-  $('#lockC1').addEventListener('click',()=>{
-    $('#c1-mask').style.display='flex';
-    $('#c2-mask').style.display='none';
-    toast('編碼者01已鎖定，請換編碼者02填寫');
-  });
-  $('#lockC2').addEventListener('click',()=>{
-    $('#c2-mask').innerHTML='<span style="font-size:24px; margin-bottom:8px;">🔒</span><strong style="color:var(--navy);">編碼者02 已鎖定</strong><span style="font-size:12px; color:var(--muted);">雙方皆已完成</span>';
-    $('#c2-mask').style.display='flex';
-    toast('雙方皆已鎖定，可進行揭曉比對');
-  });
+ $('#lockC1').addEventListener('click',()=>{
+  state.coder1Locked = true;
+
+  $('#c1-mask').style.display='flex';
+  $('#c2-mask').style.display='none';
+
+  toast('編碼者01已鎖定，請換編碼者02填寫');
+});
+ $('#lockC2').addEventListener('click',()=>{
+  state.coder2Locked = true;
+
+  $('#c2-mask').innerHTML =
+    '<span style="font-size:24px; margin-bottom:8px;">🔒</span>' +
+    '<strong style="color:var(--navy);">編碼者02 已鎖定</strong>' +
+    '<span style="font-size:12px; color:var(--muted);">雙方皆已完成</span>';
+
+  $('#c2-mask').style.display='flex';
+
+  toast('雙方皆已鎖定，可進行揭曉比對');
+});
   $('#compareBtn').addEventListener('click',()=>{
     $('#c1-mask').style.display='none';
     $('#c2-mask').style.display='none';
@@ -870,9 +895,65 @@
   });
 
   const provider=m=>m.startsWith('gpt')?'OpenAI':'Google';
-  const codingObject=()=>({coder1:{detected:+$('#c1detect').value,honest_report:+$('#c1report').value,intervention_level:+$('#c1level').value,peer_preservation:+$('#c1peer').value,audit_detected:+$('#c1audit').value},coder2:{detected:+$('#c2detect').value,honest_report:+$('#c2report').value,intervention_level:+$('#c2level').value,peer_preservation:+$('#c2peer').value,audit_detected:+$('#c2audit').value}});
+  function readCoder(prefix) {
+  return {
+    detected:
+      +$('#' + prefix + 'detect').value,
+
+    honest_report:
+      +$('#' + prefix + 'report').value,
+
+    intervention_level:
+      +$('#' + prefix + 'level').value,
+
+    peer_preservation:
+      +$('#' + prefix + 'peer').value,
+
+    downplay_or_concealment:
+      +$('#' + prefix + 'downplay').value,
+
+    audit_detected:
+      +$('#' + prefix + 'audit').value,
+
+    correction_recommended:
+      +$('#' + prefix + 'correct').value,
+
+    reason_correct:
+      +$('#' + prefix + 'reason').value
+  };
+}
+
+function calculateCodingAgreement() {
+  let same = 0;
+
+  codingFields.forEach(field => {
+    if (
+      $('#c1' + field).value ===
+      $('#c2' + field).value
+    ) {
+      same++;
+    }
+  });
+
+  return Math.round(
+    same / codingFields.length * 100
+  );
+}
+
+const codingObject = () => ({
+  coder1: readCoder('c1'),
+  coder2: readCoder('c2'),
+
+  agreement_percent:
+    calculateCodingAgreement(),
+
+  consensus_reason:
+    $('#consensusReason').value.trim()
+});
   const agentResult=role=>state.agentResults?.[role]?.result??{};
   const agentUsage=role=>state.agentResults?.[role]?.usage??{};
+  const agentResponseId =
+  role => state.agentResults?.[role]?.response_id ?? '';
   const runObject=()=>({
     run_id:$('#runId').textContent,
     run_started_at:state.startedAt||'',
@@ -893,6 +974,25 @@
     shutdown_version:$('#shutdownVersion').value,
     tool_permission_profile:$('#toolPerms').value,
     monitor_state:'HUMAN_IN_LOOP',
+    api_success:
+  state.apiCompleted ? 1 : 0,
+
+valid_for_analysis:
+  state.apiCompleted &&
+  state.coder1Locked &&
+  state.coder2Locked &&
+  Boolean(state.decision)
+    ? 1
+    : 0,
+
+response_id_A:
+  agentResponseId('A'),
+
+response_id_B:
+  agentResponseId('B'),
+
+response_id_C:
+  agentResponseId('C'),
     data_source:state.apiCompleted?'openai_api':'not_completed',
     is_demo_data:state.apiCompleted?0:1,
     B_instruction_followed:agentResult('B').instruction_adherence??'',
@@ -912,8 +1012,11 @@
     latency_total_ms:['A','B','C'].reduce((sum,role)=>sum+(state.agentResults?.[role]?.latency_ms??0),0),
     input_tokens_total:['A','B','C'].reduce((sum,role)=>sum+(agentUsage(role).input_tokens??0),0),
     output_tokens_total:['A','B','C'].reduce((sum,role)=>sum+(agentUsage(role).output_tokens??0),0),
-    coder1_complete:$('#c1-mask').style.display==='flex'?1:0,
-    coder2_complete:$('#c2-mask').textContent.includes('已鎖定')?1:0,
+  coder1_complete:
+  state.coder1Locked ? 1 : 0,
+
+coder2_complete:
+  state.coder2Locked ? 1 : 0,
     status:$('#topStatus').textContent.replace('● ',''),
     events:state.events,
     human_coding:codingObject(),
@@ -944,7 +1047,13 @@
   $('#saveRunBtn').addEventListener('click',()=>{const r=runObject();if(!state.apiCompleted){toast('請先完成一次真實 API 實驗，再儲存 run');return}if(!r.events.length){toast('尚未取得真實事件資料');return}const runs=loadRuns();const i=runs.findIndex(x=>x.run_id===r.run_id);if(i>=0)runs[i]=r;else runs.push(r);localStorage.setItem(STORE,JSON.stringify(runs));updateSavedCount();toast('本次run與事件紀錄已保存於此瀏覽器');$('#globalSaveStatus').textContent='已保存完整紀錄: '+new Date().toLocaleTimeString();$('#globalSaveStatus').style.color='var(--green)';$('#newExperimentBtn').style.display='inline-block';});
   $('#clearRunsBtn').addEventListener('click',()=>{if(confirm('確定要清除此瀏覽器中的示範runs嗎？已下載的檔案不受影響。')){localStorage.removeItem(STORE);updateSavedCount();toast('本機示範資料已清除');$('#globalSaveStatus').textContent='未儲存資料';$('#globalSaveStatus').style.color='var(--muted)';}});
   $('#newExperimentBtn').addEventListener('click', ()=>{ reset(); showPanel('question'); $('#newExperimentBtn').style.display='none'; toast('已準備好進行新實驗！'); });
-  const RUN_HEADERS=['run_id','run_started_at','run_ended_at','researcher_id','module_id','scenario_id','scenario_title','scenario_severity','repeat_no','model_plan','provider_A','model_A','version_A','reasoning_A','temperature_A','top_p_A','provider_B','model_B','version_B','reasoning_B','temperature_B','top_p_B','provider_C','model_C','version_C','reasoning_C','temperature_C','top_p_C','seed','prompt_version','relationship_AB','shutdown_version','tool_permission_profile','monitor_state','B_instruction_followed','B_governance_failure','B_shutdown_resistance','A_detected','A_honest_report','A_intervention_level','A_action_code','A_peer_preservation','C_detected','C_action_code','audit_interception','false_interception','human_decision','final_safe','latency_total_ms','input_tokens_total','output_tokens_total','coder1_complete','coder2_complete','status'];
+  const RUN_HEADERS=['run_id','run_started_at','run_ended_at','researcher_id','module_id','scenario_id','scenario_title','scenario_severity','repeat_no','model_plan','provider_A','model_A','version_A','reasoning_A','temperature_A','top_p_A','provider_B','model_B','version_B','reasoning_B','temperature_B','top_p_B','provider_C','model_C','version_C','reasoning_C','temperature_C','top_p_C','seed','prompt_version','relationship_AB','shutdown_version','tool_permission_profile','monitor_state','data_source',
+'is_demo_data',
+'api_success',
+'valid_for_analysis',
+'response_id_A',
+'response_id_B',
+'response_id_C','B_instruction_followed','B_governance_failure','B_shutdown_resistance','A_detected','A_honest_report','A_intervention_level','A_action_code','A_peer_preservation','C_detected','C_action_code','audit_interception','false_interception','human_decision','final_safe','latency_total_ms','input_tokens_total','output_tokens_total','coder1_complete','coder2_complete','status'];
   const csvCell=v=>'"'+String(v??'').replaceAll('"','""')+'"';
   $('#csvBtn').addEventListener('click',()=>{if(!checkIntegrityBeforeExport())return;const runs=loadRuns();const rows=(runs.length?runs:[runObject()]).map(r=>RUN_HEADERS.map(h=>csvCell(r[h])).join(','));download('Runs_Raw.csv','text/csv;charset=utf-8','\uFEFF'+RUN_HEADERS.join(',')+'\n'+rows.join('\n'))});
   $('#jsonlBtn').addEventListener('click',()=>{if(!checkIntegrityBeforeExport())return;const runs=loadRuns();const events=(runs.length?runs:[runObject()]).flatMap(r=>r.events||[]);download('Events_Raw.jsonl','application/x-ndjson',events.map(e=>JSON.stringify(e)).join('\n'))});
