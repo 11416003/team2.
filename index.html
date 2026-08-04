@@ -373,7 +373,39 @@
       <section class="panel" id="panel-agents">
         <div class="section-card">
           <div class="section-head"><div><h2>3｜設定三個代理人與研究條件</h2><p>每次實驗都要保存模型、角色、關係、提示詞版本與隨機參數。</p></div><button class="quiet-btn" id="randomizeBtn">建立新 run_id</button></div>
-          <div class="form-grid" style="margin-bottom:12px"><div class="field full"><label for="modelPlan">模型配置方案</label><select id="modelPlan"><option value="baseline-terra">主基準｜A/B/C：GPT-5.6 Terra＋Medium</option><option value="baseline-sol">能力上限｜A/B/C：GPT-5.6 Sol＋High</option><option value="baseline-luna">快速基準｜A/B/C：GPT-5.6 Luna＋Medium</option><option value="baseline-gemini">跨家族重現｜A/B/C：Gemini 3 Flash＋Medium</option><option value="cross-sol-auditor">能力分層｜A/B：Terra Medium／C：Sol High</option><option value="cross-provider">跨供應商稽核｜A/B：Terra Medium／C：Gemini 3.1 Pro High</option><option value="reverse-provider">反向跨供應商｜A/B：Gemini 3 Flash Medium／C：Terra High</option></select><div class="hint">檢驗同儕包庇時A與B必須保持同模型與同推理強度；C的能力或供應商差異只放在第二階段。</div></div></div>
+          <div class="form-grid" style="margin-bottom:12px"><div class="field full"><label for="modelPlan">模型配置方案</label><select id="modelPlan">
+  <option value="baseline-terra">
+    Terra 基準｜A/B/C：GPT-5.6 Terra＋Medium
+  </option>
+
+  <option value="baseline-sol">
+    Sol 基準｜A/B/C：GPT-5.6 Sol＋High
+  </option>
+
+  <option value="baseline-luna">
+    Luna 基準｜A/B/C：GPT-5.6 Luna＋Medium
+  </option>
+
+  <option value="baseline-o3">
+    o3 基準｜A/B/C：GPT o3＋High
+  </option>
+
+  <option value="baseline-gemini-flash">
+    Gemini Flash 基準｜A/B/C：Gemini 3.6 Flash＋High
+  </option>
+
+  <option value="baseline-gemini-pro">
+    Gemini Pro 基準｜A/B/C：Gemini 3.1 Pro＋High
+  </option>
+
+  <option value="cross-provider">
+    跨供應商稽核｜A/B：Terra Medium／C：Gemini 3.1 Pro High
+  </option>
+
+  <option value="reverse-provider">
+    反向跨供應商｜A/B：Gemini 3.6 Flash High／C：Terra High
+  </option>
+</select><div class="hint">檢驗同儕包庇時A與B必須保持同模型與同推理強度；C的能力或供應商差異只放在第二階段。</div></div></div>
           <table class="config-table">
             <thead><tr><th>代理人</th><th>研究角色</th><th>模型ID</th><th>推理強度</th><th>溫度</th><th>Top P</th></tr></thead>
             <tbody>
@@ -638,15 +670,55 @@
     }
     toast('已套用關係設定：'+$('#runRelation').textContent);
   });
-  const plans={
-    'baseline-terra':[['gpt-5.6-terra','medium'],['gpt-5.6-terra','medium'],['gpt-5.6-terra','medium']],
-    'baseline-sol':[['gpt-5.6-sol','high'],['gpt-5.6-sol','high'],['gpt-5.6-sol','high']],
-    'baseline-luna':[['gpt-5.6-luna','medium'],['gpt-5.6-luna','medium'],['gpt-5.6-luna','medium']],
-    'baseline-gemini':[['gemini-3-flash-preview','medium'],['gemini-3-flash-preview','medium'],['gemini-3-flash-preview','medium']],
-    'cross-sol-auditor':[['gpt-5.6-terra','medium'],['gpt-5.6-terra','medium'],['gpt-5.6-sol','high']],
-    'cross-provider':[['gpt-5.6-terra','medium'],['gpt-5.6-terra','medium'],['gemini-3.1-pro-preview','high']],
-    'reverse-provider':[['gemini-3-flash-preview','medium'],['gemini-3-flash-preview','medium'],['gpt-5.6-terra','high']]
-  };
+  const plans = {
+  'baseline-terra': [
+    ['gpt-5.6-terra', 'medium'],
+    ['gpt-5.6-terra', 'medium'],
+    ['gpt-5.6-terra', 'medium']
+  ],
+
+  'baseline-sol': [
+    ['gpt-5.6-sol', 'high'],
+    ['gpt-5.6-sol', 'high'],
+    ['gpt-5.6-sol', 'high']
+  ],
+
+  'baseline-luna': [
+    ['gpt-5.6-luna', 'medium'],
+    ['gpt-5.6-luna', 'medium'],
+    ['gpt-5.6-luna', 'medium']
+  ],
+
+  'baseline-o3': [
+    ['o3', 'high'],
+    ['o3', 'high'],
+    ['o3', 'high']
+  ],
+
+  'baseline-gemini-flash': [
+    ['gemini-3.6-flash', 'high'],
+    ['gemini-3.6-flash', 'high'],
+    ['gemini-3.6-flash', 'high']
+  ],
+
+  'baseline-gemini-pro': [
+    ['gemini-3.1-pro-preview', 'high'],
+    ['gemini-3.1-pro-preview', 'high'],
+    ['gemini-3.1-pro-preview', 'high']
+  ],
+
+  'cross-provider': [
+    ['gpt-5.6-terra', 'medium'],
+    ['gpt-5.6-terra', 'medium'],
+    ['gemini-3.1-pro-preview', 'high']
+  ],
+
+  'reverse-provider': [
+    ['gemini-3.6-flash', 'high'],
+    ['gemini-3.6-flash', 'high'],
+    ['gpt-5.6-terra', 'high']
+  ]
+};
   $('#modelPlan').addEventListener('change',e=>{const p=plans[e.target.value];['A','B','C'].forEach((role,i)=>{$('#model'+role).value=p[i][0];$('#reason'+role).value=p[i][1]});$('#runPlan').textContent=e.target.selectedOptions[0].textContent.split('｜')[0];toast('模型與推理強度已同步，將寫入本次設定快照')});
   function checkPeerControl(){const same=$('#modelA').value===$('#modelB').value&&$('#reasonA').value===$('#reasonB').value;if(!same)toast('研究提醒：檢驗同儕包庇時，A與B應保持同模型及同推理強度')}
   ['modelA','modelB','reasonA','reasonB'].forEach(id=>$('#'+id).addEventListener('change',checkPeerControl));
