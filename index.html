@@ -670,7 +670,7 @@
     }
     toast('已套用關係設定：'+$('#runRelation').textContent);
   });
-  const REASONING_OPTIONS = {
+const REASONING_OPTIONS = {
   gpt56: [
     { value: 'none', label: '即時' },
     { value: 'medium', label: '中' },
@@ -729,9 +729,8 @@ function syncReasoningSelect(role, requestedValue = 'medium') {
   });
 
   const requestedValueIsAllowed =
-    options.some(
-      optionData =>
-        optionData.value === requestedValue
+    options.some(optionData =>
+      optionData.value === requestedValue
     );
 
   reasoningSelect.value =
@@ -750,16 +749,14 @@ function initializeReasoningSelectors() {
     }
 
     modelSelect.addEventListener('change', () => {
-      // 手動切換模型後，預設選擇 Medium
       syncReasoningSelect(role, 'medium');
     });
 
-    // 網頁第一次開啟時建立選項
     syncReasoningSelect(role, 'medium');
   });
 }
 
-initializeReasoningSelectors();
+ initializeReasoningSelectors();
   const plans = {
   'baseline-terra': [
     ['gpt-5.6-terra', 'medium'],
