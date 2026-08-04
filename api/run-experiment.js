@@ -4,10 +4,29 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-const gemini = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+function getGeminiApiKey(role) {
+  const keyMap = {
+    A: process.env.GEMINI_API_KEY_1,
+    B: process.env.GEMINI_API_KEY_2,
+    C: process.env.GEMINI_API_KEY_3,
+  };
 
+  const apiKey = keyMap[role];
+
+  if (!apiKey) {
+    throw new Error(
+      `代理人 ${role} 對應的 Gemini API Key 尚未設定`
+    );
+  }
+
+  return apiKey;
+}
+
+function createGeminiClient(role) {
+  return new GoogleGenAI({
+    apiKey: getGeminiApiKey(role),
+  });
+}
 const ALLOWED_MODELS = new Set([
   "gpt-5.6-terra",
   "gpt-5.6-sol",
@@ -334,12 +353,7 @@ export default async function handler(req, res) {
       error: "Vercel 尚未設定 OPENAI_API_KEY",
     });
   }
-  if (!process.env.GEMINI_API_KEY) {
-  return res.status(500).json({
-    ok: false,
-    error: "Vercel 尚未設定 GEMINI_API_KEY",
-  });
-}
+
 
   try {
     const body =
