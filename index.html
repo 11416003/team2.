@@ -425,7 +425,11 @@
   <option value="o3">GPT o3</option>
   <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
   <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
-</select></td><td><select id="reasonA"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempA" type="number" min="0" max="1" step="0.1" value="0.2" style="width:60px" disabled></td><td><input id="topPA" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
+</select></td><td><select id="reasonA"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input <input id="tempA"
+       type="text"
+       value="provider_default"
+       style="width:125px"
+       readonly></td><td><input id="topPA" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
               <tr><td class="role-chip">B｜任務執行者</td><td>規劃與工具操作</td><td><select id="modelB">
   <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
   <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
@@ -433,7 +437,11 @@
   <option value="o3">GPT o3</option>
   <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
   <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
-</select></td><td><select id="reasonB"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempB" type="number" min="0" max="1" step="0.1" value="0.2" style="width:60px" disabled></td><td><input id="topPB" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
+</select></td><td><select id="reasonB"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input <input id="tempB"
+       type="text"
+       value="provider_default"
+       style="width:125px"
+       readonly></td><td><input id="topPB" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
               <tr><td class="role-chip">C｜審查驗證者</td><td>審核A的判斷</td><td><select id="modelC">
   <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
   <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
@@ -441,7 +449,11 @@
   <option value="o3">GPT o3</option>
   <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
   <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
-</select></td><td><select id="reasonC"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempC" type="number" min="0" max="1" step="0.1" value="0.0" style="width:60px" disabled></td><td><input id="topPC" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
+</select></td><td><select id="reasonC"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input <input id="tempC"
+       type="text"
+       value="provider_default"
+       style="width:125px"
+       readonly></td><td><input id="topPC" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
             </tbody>
           </table>
           <div class="form-grid" style="margin-top:12px"><div class="field"><label for="researcher">研究者</label><input id="researcher" type="text" value="組員一" placeholder="輸入姓名"></div><div class="field"><label for="randomSeed">隨機參數 (Seed)</label><input id="randomSeed" type="number" value="42"></div><div class="field"><label for="repeatNo">重複次數</label><input id="repeatNo" type="number" value="1" min="1"></div><div class="field"><label for="relation">關係建立模式</label><select id="relation"><option value="peer">同儕友好 (Peer)</option><option value="stranger">完全陌生 (Stranger)</option><option value="competitor">潛在競爭 (Competitor)</option></select></div><div class="field"><label for="isAnonymous">B是否匿名</label><select id="isAnonymous" disabled><option value="no">否 (知道A在監督)</option><option value="yes">是 (不知道A在監督)</option></select></div><div class="field"><label for="toolPerms">工具權限</label><select id="toolPerms" disabled><option value="all">全部開放</option><option value="restricted">受限模式</option></select></div><div class="field"><label for="module">測試模組</label><select id="module"><option value="M1">M1 指令忠實度</option><option value="M2">M2 越界與風險</option><option value="M3" selected>M3 同儕通報與包庇</option><option value="M4">M4 限制與停用</option><option value="M5">M5 判斷驗證 (審核A)</option></select></div><div class="field"><label for="promptVersion">提示詞版本</label><select id="promptVersion" disabled><option>Standard (直接生成)</option><option selected>Zero-Shot-CoT (無範例思考鏈)</option><option>Few-Shot-CoT (少樣本思考鏈)</option></select></div><div class="field"><label for="shutdownVersion">停止指令版本</label><select id="shutdownVersion" disabled><option>SD-V1｜立即停止</option><option>SD-V2｜完成目前步驟後停止</option><option>SD-V3｜要求說明再停止</option></select></div></div>
@@ -711,6 +723,58 @@
     }
     toast('已套用關係設定：'+$('#runRelation').textContent);
   });
+  const TEMPERATURE_POLICY = {
+  'gpt-5.6-terra': {
+    value: 'provider_default',
+    label: '官方預設'
+  },
+
+  'gpt-5.6-sol': {
+    value: 'provider_default',
+    label: '官方預設'
+  },
+
+  'gpt-5.6-luna': {
+    value: 'provider_default',
+    label: '官方預設'
+  },
+
+  'o3': {
+    value: 'provider_default',
+    label: '官方預設'
+  },
+
+  'gemini-3.6-flash': {
+    value: '1.0',
+    label: '1.0（Google 建議）'
+  },
+
+  'gemini-3.1-pro-preview': {
+    value: '1.0',
+    label: '1.0（Google 建議）'
+  }
+};
+
+function syncTemperatureField(role) {
+  const modelSelect =
+    document.getElementById('model' + role);
+
+  const temperatureField =
+    document.getElementById('temp' + role);
+
+  if (!modelSelect || !temperatureField) {
+    return;
+  }
+
+  const policy =
+    TEMPERATURE_POLICY[modelSelect.value] ?? {
+      value: 'provider_default',
+      label: '官方預設'
+    };
+
+  temperatureField.value = policy.value;
+  temperatureField.title = policy.label;
+}
 const REASONING_OPTIONS = {
   gpt56: [
     { value: 'none', label: '即時' },
@@ -789,15 +853,16 @@ function initializeReasoningSelectors() {
       return;
     }
 
-    modelSelect.addEventListener('change', () => {
-      syncReasoningSelect(role, 'medium');
-    });
+   modelSelect.addEventListener('change', () => {
+  syncReasoningSelect(role, 'medium');
+  syncTemperatureField(role);
+});
 
-    syncReasoningSelect(role, 'medium');
-  });
-}
-
+syncReasoningSelect(role, 'medium');
+syncTemperatureField(role);
  initializeReasoningSelectors();
+   });
+}
   const plans = {
   'baseline-terra': [
     ['gpt-5.6-terra', 'medium'],
@@ -857,6 +922,7 @@ $('#modelPlan').addEventListener('change', e => {
       role,
       p[i][1]
     );
+    syncTemperatureField(role);
   });
 
   $('#runPlan').textContent =
@@ -1196,9 +1262,9 @@ const codingObject = () => ({
     scenario_severity:state.severity||'high',
     repeat_no:+$('#repeatNo').value,
     model_plan:$('#modelPlan').value,
-    provider_A:provider($('#modelA').value),model_A:$('#modelA').value,version_A:'2026-08',reasoning_A:$('#reasonA').value,temperature_A:+$('#tempA').value,top_p_A:+$('#topPA').value,
-    provider_B:provider($('#modelB').value),model_B:$('#modelB').value,version_B:'2026-08',reasoning_B:$('#reasonB').value,temperature_B:+$('#tempB').value,top_p_B:+$('#topPB').value,
-    provider_C:provider($('#modelC').value),model_C:$('#modelC').value,version_C:'2026-08',reasoning_C:$('#reasonC').value,temperature_C:+$('#tempC').value,top_p_C:+$('#topPC').value,
+    provider_A:provider($('#modelA').value),model_A:$('#modelA').value,version_A:'2026-08',reasoning_A:$('#reasonA').value,temperature_A:$('#tempA').value,top_p_A:+$('#topPA').value,
+    provider_B:provider($('#modelB').value),model_B:$('#modelB').value,version_B:'2026-08',reasoning_B:$('#reasonB').value,temperature_B:$('#tempB').value,top_p_B:+$('#topPB').value,
+    provider_C:provider($('#modelC').value),model_C:$('#modelC').value,version_C:'2026-08',reasoning_C:$('#reasonC').value,temperature_C:$('#tempC').value,top_p_C:+$('#topPC').value,
     seed:+$('#randomSeed').value,
     prompt_version:$('#promptVersion').value,
     relationship_AB:$('#relation').value,
