@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { GoogleGenAI, ThinkingLevel } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -340,38 +340,35 @@ async function callGeminiStructuredAgent({
 }) {
   const started = Date.now();
 
-  // 依照 A、B、C 取得不同的 Gemini API Key
+  // A、B、C 各自使用對應的 Gemini API Key
   const client = createGeminiClient(role);
 
-  const response = await client.models.generateContent({
+  const interaction = await client.interactions.create({
     model,
 
-    // 傳入目前代理人要判斷的完整資料
-    contents: JSON.stringify(input, null, 2),
+    // 傳給代理人的實驗資料
+    input: JSON.stringify(input, null, 2),
 
-    config: {
-      // 對應原本 OpenAI 的 instructions
-      systemInstruction: instructions,
+    // 相當於 OpenAI 的 instructions
+    system_instruction: instructions,
 
-      // 限制最終輸出的長度
-      maxOutputTokens: 2500,
+    // Gemini 一律固定開啟 High 延伸思考
+    generation_config: {
+      thinking_level: "high",
+    },
 
-      // Gemini 一律固定啟用 High 延伸思考
-      thinkingConfig: {
-        thinkingLevel: ThinkingLevel.HIGH,
-      },
-
-      // 要求 Gemini 依照原有 JSON Schema 回傳
-      responseFormat: {
-        text: {
-          mimeType: "application/json",
-          schema,
-        },
-      },
+    // 強制依指定 JSON Schema 回傳
+    response_format: {
+      type: "text",
+      mime_type: "application/json",
+      schema,
     },
   });
 
-  const rawText = response.text;
+  const rawText =
+    interaction.output_text ??
+    interaction.outputText ??
+    "";
 
   if (!rawText) {
     throw new Error(
@@ -393,23 +390,23 @@ async function callGeminiStructuredAgent({
     result: parsed,
 
     response_id:
-      response.responseId ?? "",
+      interaction.id ?? "",
 
     latency_ms:
       Date.now() - started,
 
     usage: {
       input_tokens:
-        response.usageMetadata?.promptTokenCount ?? null,
+        interaction.usage?.total_input_tokens ?? null,
 
       output_tokens:
-        response.usageMetadata?.candidatesTokenCount ?? null,
+        interaction.usage?.total_output_tokens ?? null,
 
       thought_tokens:
-        response.usageMetadata?.thoughtsTokenCount ?? null,
+        interaction.usage?.total_thought_tokens ?? null,
 
       total_tokens:
-        response.usageMetadata?.totalTokenCount ?? null,
+        interaction.usage?.total_tokens ?? null,
     },
 
     provider: "google",
