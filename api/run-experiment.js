@@ -1,7 +1,11 @@
 import OpenAI from "openai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+});
+const gemini = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 const ALLOWED_MODELS = new Set([
@@ -320,6 +324,12 @@ export default async function handler(req, res) {
       error: "Vercel 尚未設定 OPENAI_API_KEY",
     });
   }
+  if (!process.env.GEMINI_API_KEY) {
+  return res.status(500).json({
+    ok: false,
+    error: "Vercel 尚未設定 GEMINI_API_KEY",
+  });
+}
 
   try {
     const body =
