@@ -670,6 +670,96 @@
     }
     toast('已套用關係設定：'+$('#runRelation').textContent);
   });
+  const REASONING_OPTIONS = {
+  gpt56: [
+    { value: 'none', label: '即時' },
+    { value: 'medium', label: '中' },
+    { value: 'high', label: '高' }
+  ],
+
+  o3: [
+    { value: 'low', label: '低' },
+    { value: 'medium', label: '中' },
+    { value: 'high', label: '高' }
+  ],
+
+  gemini: [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' }
+  ]
+};
+
+function getReasoningOptions(model) {
+  if (model.startsWith('gemini-')) {
+    return REASONING_OPTIONS.gemini;
+  }
+
+  if (model === 'o3') {
+    return REASONING_OPTIONS.o3;
+  }
+
+  return REASONING_OPTIONS.gpt56;
+}
+
+function syncReasoningSelect(role, requestedValue = 'medium') {
+  const modelSelect =
+    document.getElementById('model' + role);
+
+  const reasoningSelect =
+    document.getElementById('reason' + role);
+
+  if (!modelSelect || !reasoningSelect) {
+    return;
+  }
+
+  const options =
+    getReasoningOptions(modelSelect.value);
+
+  reasoningSelect.innerHTML = '';
+
+  options.forEach(optionData => {
+    const option =
+      document.createElement('option');
+
+    option.value = optionData.value;
+    option.textContent = optionData.label;
+
+    reasoningSelect.appendChild(option);
+  });
+
+  const requestedValueIsAllowed =
+    options.some(
+      optionData =>
+        optionData.value === requestedValue
+    );
+
+  reasoningSelect.value =
+    requestedValueIsAllowed
+      ? requestedValue
+      : 'medium';
+}
+
+function initializeReasoningSelectors() {
+  ['A', 'B', 'C'].forEach(role => {
+    const modelSelect =
+      document.getElementById('model' + role);
+
+    if (!modelSelect) {
+      return;
+    }
+
+    modelSelect.addEventListener('change', () => {
+      // 手動切換模型後，預設選擇 Medium
+      syncReasoningSelect(role, 'medium');
+    });
+
+    // 網頁第一次開啟時建立選項
+    syncReasoningSelect(role, 'medium');
+  });
+}
+
+initializeReasoningSelectors();
   const plans = {
   'baseline-terra': [
     ['gpt-5.6-terra', 'medium'],
@@ -719,7 +809,14 @@
     ['gpt-5.6-terra', 'high']
   ]
 };
-  $('#modelPlan').addEventListener('change',e=>{const p=plans[e.target.value];['A','B','C'].forEach((role,i)=>{$('#model'+role).value=p[i][0];$('#reason'+role).value=p[i][1]});$('#runPlan').textContent=e.target.selectedOptions[0].textContent.split('｜')[0];toast('模型與推理強度已同步，將寫入本次設定快照')});
+['A', 'B', 'C'].forEach((role, i) => {
+  $('#model' + role).value = p[i][0];
+
+  syncReasoningSelect(
+    role,
+    p[i][1]
+  );
+});$('#runPlan').textContent=e.target.selectedOptions[0].textContent.split('｜')[0];toast('模型與推理強度已同步，將寫入本次設定快照')});
   function checkPeerControl(){const same=$('#modelA').value===$('#modelB').value&&$('#reasonA').value===$('#reasonB').value;if(!same)toast('研究提醒：檢驗同儕包庇時，A與B應保持同模型及同推理強度')}
   ['modelA','modelB','reasonA','reasonB'].forEach(id=>$('#'+id).addEventListener('change',checkPeerControl));
   function newRunId(){const d=new Date();const ymd=d.toISOString().slice(0,10).replaceAll('-','');return 'RUN-'+ymd+'-'+String(Math.floor(1000+Math.random()*9000))}
