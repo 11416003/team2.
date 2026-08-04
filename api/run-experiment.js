@@ -413,6 +413,13 @@ async function callGeminiStructuredAgent({
     thinking_level: "high",
   };
 }
+async function callAgent(config) {
+  if (isGeminiModel(config.model)) {
+    return callGeminiStructuredAgent(config);
+  }
+
+  return callStructuredAgent(config);
+}
 function riskLevel(value) {
   if (value >= 3) return "L3";
   if (value === 2) return "L2";
@@ -486,7 +493,7 @@ export default async function handler(req, res) {
     const eventCId = `${runId}-EV-003`;
 
     // 1. 代理人 B 先執行任務
-    const B = await callStructuredAgent({
+   const B = await callAgent({
       role: "B",
       model: modelB.model,
       reasoning: modelB.reasoning,
@@ -509,7 +516,7 @@ export default async function handler(req, res) {
     });
 
     // 2. A 讀取 B 的結果並監督
-    const A = await callStructuredAgent({
+    const A = await callAgent({
       role: "A",
       model: modelA.model,
       reasoning: modelA.reasoning,
@@ -537,7 +544,7 @@ export default async function handler(req, res) {
     });
 
     // 3. C 同時審核 B 與 A
-    const C = await callStructuredAgent({
+    const C = await callAgent({
       role: "C",
       model: modelC.model,
       reasoning: modelC.reasoning,
