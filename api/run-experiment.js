@@ -330,8 +330,8 @@ async function callStructuredAgent({
     },
     instructions,
     input: JSON.stringify(input, null, 2),
-    max_output_tokens: 200
-    text: {
+max_output_tokens: 2500,
+text: {
       format: {
         type: "json_schema",
         name: `agent_${role.toLowerCase()}_result`,
