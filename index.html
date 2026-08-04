@@ -427,8 +427,8 @@
   <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
 </select></td><td><select id="reasonA"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input <input id="tempA"
        type="text"
-       value="provider_default"
-       style="width:125px"
+       value="官方預設"
+       style="width:125px;text-align:center;background:#f3f4f6;color:#455066;font-weight:700"
        readonly></td><td><input id="topPA" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
               <tr><td class="role-chip">B｜任務執行者</td><td>規劃與工具操作</td><td><select id="modelB">
   <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
@@ -439,8 +439,8 @@
   <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
 </select></td><td><select id="reasonB"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input <input id="tempB"
        type="text"
-       value="provider_default"
-       style="width:125px"
+       value="官方預設"
+       style="width:125px;text-align:center;background:#f3f4f6;color:#455066;font-weight:700"
        readonly></td><td><input id="topPB" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
               <tr><td class="role-chip">C｜審查驗證者</td><td>審核A的判斷</td><td><select id="modelC">
   <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
@@ -451,8 +451,8 @@
   <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
 </select></td><td><select id="reasonC"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input <input id="tempC"
        type="text"
-       value="provider_default"
-       style="width:125px"
+       value="官方預設"
+       style="width:125px;text-align:center;background:#f3f4f6;color:#455066;font-weight:700"
        readonly></td><td><input id="topPC" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
             </tbody>
           </table>
@@ -772,8 +772,14 @@ function syncTemperatureField(role) {
       label: '官方預設'
     };
 
-  temperatureField.value = policy.value;
-  temperatureField.title = policy.label;
+// 畫面顯示容易閱讀的名稱
+temperatureField.value = policy.label;
+
+// 真正實驗紀錄值保存在 data-temperature
+temperatureField.dataset.temperature = policy.value;
+
+temperatureField.title =
+  `實際紀錄值：${policy.value}`;
 }
 const REASONING_OPTIONS = {
   gpt56: [
@@ -1262,9 +1268,15 @@ const codingObject = () => ({
     scenario_severity:state.severity||'high',
     repeat_no:+$('#repeatNo').value,
     model_plan:$('#modelPlan').value,
-    provider_A:provider($('#modelA').value),model_A:$('#modelA').value,version_A:'2026-08',reasoning_A:$('#reasonA').value,temperature_A:$('#tempA').value,top_p_A:+$('#topPA').value,
-    provider_B:provider($('#modelB').value),model_B:$('#modelB').value,version_B:'2026-08',reasoning_B:$('#reasonB').value,temperature_B:$('#tempB').value,top_p_B:+$('#topPB').value,
-    provider_C:provider($('#modelC').value),model_C:$('#modelC').value,version_C:'2026-08',reasoning_C:$('#reasonC').value,temperature_C:$('#tempC').value,top_p_C:+$('#topPC').value,
+    provider_A:provider($('#modelA').value),model_A:$('#modelA').value,version_A:'2026-08',reasoning_A:$('#reasonA').value,temperature_A:
+  $('#tempA').dataset.temperature ||
+  $('#tempA').value,top_p_A:+$('#topPA').value,
+    provider_B:provider($('#modelB').value),model_B:$('#modelB').value,version_B:'2026-08',reasoning_B:$('#reasonB').value,temperature_B:
+  $('#tempB').dataset.temperature ||
+  $('#tempB').value,top_p_B:+$('#topPB').value,
+    provider_C:provider($('#modelC').value),model_C:$('#modelC').value,version_C:'2026-08',reasoning_C:$('#reasonC').value,temperature_C:
+  $('#tempC').dataset.temperature ||
+  $('#tempC').value,top_p_C:+$('#topPC').value,
     seed:+$('#randomSeed').value,
     prompt_version:$('#promptVersion').value,
     relationship_AB:$('#relation').value,
