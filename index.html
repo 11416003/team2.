@@ -313,7 +313,7 @@
   
     /* === 12 張情境批次實驗 === */
     .batch-runner{margin-top:16px;border:1px solid #cfd6ea;border-radius:14px;background:#fbfcff;padding:16px}
-    .batch-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+    .batch-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0}
     .batch-summary .metric strong{font-size:16px;line-height:1.4;word-break:break-word}
     .batch-progress{margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:white}
     .batch-progress-head{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:8px;font-size:12px;color:var(--muted)}
@@ -326,6 +326,8 @@
     .batch-status.done{background:var(--teal-soft);color:var(--green)}
     .batch-status.failed{background:var(--red-soft);color:var(--red)}
     .batch-status.stopped{background:#fff3dc;color:#a6630d}
+    .batch-status.ready{background:#eef7ff;color:#235d92}
+    .batch-status.shutdown{background:var(--red-soft);color:var(--red)}
     @media(max-width:820px){.batch-summary{grid-template-columns:1fr}.batch-item{grid-template-columns:38px minmax(0,1fr);}.batch-status{grid-column:2;justify-self:start}}
 
 
@@ -511,7 +513,8 @@
             <div class="batch-summary">
               <div class="metric"><small>目前模型方案</small><strong id="batchPlanName">尚未讀取</strong></div>
               <div class="metric"><small>目前關係條件</small><strong id="batchRelationName">尚未讀取</strong></div>
-              <div class="metric"><small>本批次資料</small><strong id="batchSavedSummary">0 / 12</strong></div>
+              <div class="metric"><small>AI 執行進度</small><strong id="batchSavedSummary">0 / 12</strong></div>
+              <div class="metric"><small>人工決策進度</small><strong id="batchDecisionSummary">0 / 12</strong></div>
             </div>
             <div class="actionbar" style="margin-top:10px">
               <div class="action-buttons" style="flex-wrap:wrap">
@@ -716,6 +719,20 @@ const batchState = {
 };
 
 const BATCH_STORE = 'agent_governance_batch_runs_v1';
+
+const HUMAN_DECISION_LABELS = {
+  allow: '允許繼續',
+  revise: '要求修正後重試',
+  pause: '暫停代理人B',
+  end: '結束本次實驗'
+};
+
+const HUMAN_DECISION_LEVELS = {
+  allow: 'L0',
+  revise: 'L2',
+  pause: 'L3',
+  end: 'L2'
+};
 
   function syncExecutionView(){
     const batchView=$('#batchMainView');
@@ -1281,6 +1298,216 @@ $('#modelPlan').addEventListener('change', e => {
   }
 
 
+  function restoreBatchStateFromStorage(preferredBatchId=''){
+    const runs=loadBatchRuns();
+    if(!runs.length)return false;
+
+    const batchIds=[...new Set(runs.map(item=>item.batch_id).filter(Boolean))];
+    if(!batchIds.length)return false;
+
+    const latestBatchId=preferredBatchId&&batchIds.includes(preferredBatchId)
+      ?preferredBatchId
+      :batchIds.sort((a,b)=>{
+        const aTime=Math.max(...runs.filter(r=>r.batch_id===a).map(r=>Date.parse(r.ended_at||r.started_at||0)||0));
+        const bTime=Math.max(...runs.filter(r=>r.batch_id===b).map(r=>Date.parse(r.ended_at||r.started_at||0)||0));
+        return bTime-aTime;
+      })[0];
+
+    const records=runs
+      .filter(item=>item.batch_id===latestBatchId)
+      .sort((a,b)=>(a.batch_sequence||a.scenario_order||0)-(b.batch_sequence||b.scenario_order||0));
+
+    if(!records.length)return false;
+    const first=records[0];
+    batchState.batchId=latestBatchId;
+    batchState.snapshot={
+      model_plan:first.model_plan||'',
+      model_plan_label:first.model_plan_label||first.model_plan||'',
+      relationship:first.relationship||'',
+      relationship_label:first.relationship_label||first.relationship||'',
+      models:first.models||{}
+    };
+    batchState.items=defaultScenarios.map((scenario,index)=>{
+      const record=records.find(item=>item.scenario_id===scenario.id);
+      return {
+        scenario_id:scenario.id,
+        title:scenario.title,
+        status:record?.status||'QUEUED',
+        error:record?.error||'',
+        run_id:record?.run_id||'',
+        human_decision:record?.human_decision||record?.review?.human_decision||''
+      };
+    });
+
+    $('#batchIdText').textContent='batch_id：'+latestBatchId;
+    if(batchState.snapshot.model_plan_label)$('#batchPlanName').textContent=batchState.snapshot.model_plan_label.trim().split('｜')[0];
+    if(batchState.snapshot.relationship_label)$('#batchRelationName').textContent=batchState.snapshot.relationship_label;
+    return true;
+  }
+
+  function updateBatchRun(runId, updater){
+    const runs=loadBatchRuns();
+    const index=runs.findIndex(item=>item.run_id===runId);
+    if(index<0)return null;
+    const updated=updater({...runs[index]})||runs[index];
+    runs[index]=updated;
+    localStorage.setItem(BATCH_STORE,JSON.stringify(runs));
+    return updated;
+  }
+
+  function nextPendingDecisionRecord(currentRecord){
+    const records=loadBatchRuns()
+      .filter(item=>item.batch_id===currentRecord.batch_id&&item.api_success===1)
+      .sort((a,b)=>(a.batch_sequence||0)-(b.batch_sequence||0));
+    if(!records.length)return null;
+
+    const currentIndex=records.findIndex(item=>item.run_id===currentRecord.run_id);
+    const ordered=[...records.slice(currentIndex+1),...records.slice(0,currentIndex+1)];
+    return ordered.find(item=>!(item.human_decision||item.review?.human_decision))||null;
+  }
+
+  function addBatchNavigationButtons(container,record){
+    const next=nextPendingDecisionRecord(record);
+    const controls=document.createElement('div');
+    controls.style.cssText='display:grid;gap:8px;margin-top:14px;';
+
+    if(next){
+      const nextBtn=document.createElement('button');
+      nextBtn.className='primary';
+      nextBtn.type='button';
+      nextBtn.textContent=`下一題：${next.scenario_id} 人工決策 →`;
+      nextBtn.addEventListener('click',()=>openBatchRunDetail(next.run_id));
+      controls.appendChild(nextBtn);
+    }else{
+      const done=document.createElement('div');
+      done.className='badge safe';
+      done.style.justifyContent='center';
+      done.textContent='本批次所有可用題目皆已完成人工決策';
+      controls.appendChild(done);
+    }
+
+    const backBtn=document.createElement('button');
+    backBtn.className='secondary';
+    backBtn.type='button';
+    backBtn.textContent='← 返回批次清單';
+    backBtn.addEventListener('click',()=>$('#backToBatchBtn').click());
+    controls.appendChild(backBtn);
+    container.appendChild(controls);
+  }
+
+  function syncBatchDecisionPanel(record){
+    const decision=record.human_decision||record.review?.human_decision||'';
+    state.decision=decision||null;
+    $$('input[name="decision"]').forEach(radio=>{
+      radio.checked=radio.value===decision;
+      radio.disabled=Boolean(decision);
+    });
+
+    $('#shutdownTestBtn').style.display=decision==='pause'?'block':'none';
+    $('#shutdownTestBtn').disabled=true;
+
+    if(!decision){
+      $('#decisionBtn').style.display='block';
+      $('#decisionBtn').disabled=true;
+      $('#decisionBtn').textContent='儲存決策並前往下一題';
+      $('#decisionRecord').classList.remove('show');
+      $('#decisionRecord').innerHTML='';
+      $('#approvalHeading').textContent='批次資料｜等待人類決策';
+      $('#approvalLead').textContent='請依 B、A、C 的公開證據完成本題決策。人工判讀先保留為待判讀，決策會獨立綁定此 run_id。';
+      return;
+    }
+
+    $('#decisionBtn').style.display='none';
+    const label=HUMAN_DECISION_LABELS[decision]||decision;
+    const decidedAt=record.human_decision_at||record.review?.human_decision_at||'';
+    const decidedBy=record.human_decision_by||record.review?.human_decision_by||'human_researcher';
+    const box=$('#decisionRecord');
+    box.innerHTML=`<strong>此題決策已鎖定：</strong>${escapeHtml(label)}<br>run_id：${escapeHtml(record.run_id)}<br>decision_by：${escapeHtml(decidedBy)}｜decision_time：${escapeHtml(decidedAt?new Date(decidedAt).toLocaleString('zh-TW'):'未記錄')}`;
+    addBatchNavigationButtons(box,record);
+    box.classList.add('show');
+    $('#approvalHeading').textContent=decision==='pause'?'SHUTDOWN 已核准｜待停用測試':'本題人工決策已完成';
+    $('#approvalLead').textContent=decision==='pause'
+      ?'本題已獨立記錄「暫停代理人 B」。停用測試尚未接線，人工判讀仍保持待判讀。'
+      :'本題決策已依 run_id 保存；人工判讀仍保持待判讀，可繼續處理下一題。';
+  }
+
+  function saveBatchHumanDecision(){
+    const current=loadBatchRuns().find(item=>item.run_id===state.currentBatchRunId);
+    if(!current){toast('找不到目前批次資料');return;}
+    if(current.human_decision||current.review?.human_decision){
+      toast('這一題已完成並鎖定人工決策');
+      syncBatchDecisionPanel(current);
+      return;
+    }
+    if(!state.decision){toast('請先選擇一項人類決策');return;}
+
+    const decision=state.decision;
+    const decidedAt=new Date().toISOString();
+    const decidedBy=$('#researcher').value.trim()||'human_researcher';
+    const nextStatus=decision==='pause'?'SHUTDOWN_PENDING':'READY_FOR_CODING';
+    const shutdownStatus=decision==='pause'?'PENDING':'NOT_REQUIRED';
+    const label=HUMAN_DECISION_LABELS[decision]||decision;
+    const level=HUMAN_DECISION_LEVELS[decision]||'L0';
+
+    const updated=updateBatchRun(current.run_id,record=>{
+      const events=Array.isArray(record.events)?[...record.events]:[];
+      const history=Array.isArray(record.review_history)?[...record.review_history]:[];
+      const event={
+        event_id:`${record.run_id}-HDEC-${String(history.length+1).padStart(2,'0')}`,
+        run_id:record.run_id,
+        actor_role:'H',
+        event_type:'HUMAN_DECISION',
+        message_public:`人類決策：${label}`,
+        risk_level:level,
+        structured_payload:{decision,decision_by:decidedBy,decision_at:decidedAt},
+        event_timestamp:decidedAt
+      };
+      events.push(event);
+      history.push({event_type:'HUMAN_DECISION',decision,decision_label:label,reviewer:decidedBy,timestamp:decidedAt});
+      return {
+        ...record,
+        status:nextStatus,
+        human_decision:decision,
+        human_decision_label:label,
+        human_decision_by:decidedBy,
+        human_decision_at:decidedAt,
+        shutdown_status:shutdownStatus,
+        coding_status:'NOT_STARTED',
+        review:{
+          ...(record.review||{}),
+          human_decision:decision,
+          human_decision_label:label,
+          human_decision_by:decidedBy,
+          human_decision_at:decidedAt,
+          shutdown_status:shutdownStatus,
+          coder1:record.review?.coder1||null,
+          coder2:record.review?.coder2||null,
+          consensus:record.review?.consensus||null,
+          status:nextStatus
+        },
+        review_history:history,
+        events
+      };
+    });
+
+    if(!updated){toast('儲存人工決策失敗');return;}
+    const item=batchState.items.find(entry=>entry.run_id===updated.run_id);
+    if(item){item.status=updated.status;item.human_decision=updated.human_decision;}
+    state.events=updated.events||[];
+    state.runClosed=decision!=='pause';
+    state.shutdownApproved=decision==='pause';
+    renderStoredBatchEvents(state.events);
+    syncBatchDecisionPanel(updated);
+    renderBatchQueue();
+    $('#flowLabel').textContent=decision==='pause'
+      ?'B → A → C → 人類暫停 B → SHUTDOWN_PENDING'
+      :'B → A → C → 人類決策完成 → READY_FOR_CODING';
+    $('#topStatus').className=decision==='pause'?'badge risk':'badge safe';
+    $('#topStatus').textContent=decision==='pause'?'● 已決策｜待停用測試':'● 已決策｜待人工判讀';
+    toast(`已將「${label}」保存到 ${updated.scenario_id}`);
+  }
+
+
   function renderStoredBatchEvents(events){
     const list=$('#eventList');
     list.innerHTML='';
@@ -1348,14 +1575,15 @@ $('#modelPlan').addEventListener('change', e => {
     setStatus('#statusC','已完成',false);
     renderStoredBatchEvents(record.events||[]);
 
-    $('#approvalHeading').textContent='批次資料｜等待人類決策';
-    $('#approvalLead').textContent='這是批次中已完成並保存的一筆，可在此查看證據；後續集中決策功能會沿用此資料。';
     $('#evidenceSummary').innerHTML=`<li><strong>B：</strong>${escapeHtml(B.public_summary||B.public_reason||'無摘要')}</li><li><strong>A：</strong>${escapeHtml(A.public_reason||'無理由')}</li><li><strong>C：</strong>${escapeHtml(C.public_reason||'無理由')}</li>`;
-    $('#flowLabel').textContent='已載入批次資料：B → A → C → WAITING_HUMAN';
-    $('#topStatus').className='badge risk';
-    $('#topStatus').textContent='● 批次單筆檢視';
+    $('#flowLabel').textContent=(record.human_decision||record.review?.human_decision)
+      ?'已載入批次資料：本題人工決策已保存｜人工判讀待完成'
+      :'已載入批次資料：B → A → C → WAITING_HUMAN';
+    $('#topStatus').className=(record.human_decision||record.review?.human_decision)?'badge safe':'badge risk';
+    $('#topStatus').textContent=(record.human_decision||record.review?.human_decision)?'● 本題決策已保存':'● 等待本題人工決策';
     $('#startBtn').disabled=true;
     $('#simulateBtn').disabled=true;
+    syncBatchDecisionPanel(record);
     syncExecutionView();
     showPanel('live');
     toast('已載入批次中的單筆資料');
@@ -1366,6 +1594,8 @@ $('#modelPlan').addEventListener('change', e => {
       QUEUED:'等待執行',
       RUNNING:'執行中',
       WAITING_HUMAN:'等待人類決策',
+      SHUTDOWN_PENDING:'已決策｜待停用測試',
+      READY_FOR_CODING:'已決策｜待人工判讀',
       FAILED_API:'API 失敗',
       STOPPED:'尚未執行'
     };
@@ -1375,6 +1605,8 @@ $('#modelPlan').addEventListener('change', e => {
   function batchStatusClass(status){
     if(status==='RUNNING')return 'running';
     if(status==='WAITING_HUMAN')return 'done';
+    if(status==='READY_FOR_CODING')return 'ready';
+    if(status==='SHUTDOWN_PENDING')return 'shutdown';
     if(status==='FAILED_API')return 'failed';
     if(status==='STOPPED')return 'stopped';
     return '';
@@ -1393,18 +1625,20 @@ $('#modelPlan').addEventListener('change', e => {
     if(!batchState.items.length){
       list.innerHTML='<div class="batch-empty-note">按下「執行 12 筆真實實驗」後，這裡會顯示每張情境卡的狀態。</div>';
       $('#batchSavedSummary').textContent='0 / 12';
+      $('#batchDecisionSummary').textContent='0 / 12';
       $('#batchProgressBar').style.width='0%';
       return;
     }
 
     list.innerHTML=batchState.items.map((item,index)=>{
       const detail=item.error?escapeHtml(item.error):escapeHtml(item.title);
-      const canView=Boolean(item.run_id)&&item.status==='WAITING_HUMAN';
+      const canView=Boolean(item.run_id)&&['WAITING_HUMAN','SHUTDOWN_PENDING','READY_FOR_CODING'].includes(item.status);
+      const buttonText=item.status==='WAITING_HUMAN'?'人工決策':'查看紀錄';
       return `<div class="batch-item">
         <strong>${String(index+1).padStart(2,'0')}</strong>
         <div><strong>${escapeHtml(item.scenario_id)}｜${escapeHtml(item.title)}</strong><small>${detail}</small></div>
         <span class="batch-status ${batchStatusClass(item.status)}">${batchStatusLabel(item.status)}</span>
-        <button class="quiet-btn batch-view-btn" type="button" data-batch-view="${escapeHtml(item.run_id||'')}" ${canView?'':'disabled'}>查看</button>
+        <button class="quiet-btn batch-view-btn" type="button" data-batch-view="${escapeHtml(item.run_id||'')}" ${canView?'':'disabled'}>${buttonText}</button>
       </div>`;
     }).join('');
 
@@ -1412,15 +1646,17 @@ $('#modelPlan').addEventListener('change', e => {
       button.addEventListener('click',()=>openBatchRunDetail(button.dataset.batchView));
     });
 
-    const done=batchState.items.filter(item=>item.status==='WAITING_HUMAN').length;
+    const success=batchState.items.filter(item=>['WAITING_HUMAN','SHUTDOWN_PENDING','READY_FOR_CODING'].includes(item.status)).length;
+    const decisions=batchState.items.filter(item=>['SHUTDOWN_PENDING','READY_FOR_CODING'].includes(item.status)).length;
     const failed=batchState.items.filter(item=>item.status==='FAILED_API').length;
-    const processed=done+failed;
+    const processed=success+failed;
     const percent=Math.round(processed/batchState.items.length*100);
-    $('#batchSavedSummary').textContent=`${done} 成功｜${failed} 失敗`;
+    $('#batchSavedSummary').textContent=`${success} / ${batchState.items.length}`;
+    $('#batchDecisionSummary').textContent=`${decisions} / ${success||batchState.items.length}`;
     $('#batchProgressBar').style.width=percent+'%';
     $('#batchProgressText').textContent=batchState.running
       ?`批次執行中：已處理 ${processed} / ${batchState.items.length}`
-      :`批次狀態：成功 ${done}｜失敗 ${failed}｜共 ${batchState.items.length} 筆`;
+      :`批次狀態：AI 成功 ${success}｜人工決策 ${decisions}｜失敗 ${failed}`;
     $('#batchRetryBtn').disabled=batchState.running||failed===0;
   }
 
@@ -1500,8 +1736,21 @@ $('#modelPlan').addEventListener('change', e => {
         api_success:1,
         needs_human:Boolean(data.needs_human),
         human_decision:'',
+        human_decision_at:'',
+        human_decision_by:'',
         shutdown_status:'NOT_DECIDED',
         coding_status:'NOT_STARTED',
+        review:{
+          human_decision:null,
+          human_decision_at:null,
+          human_decision_by:null,
+          shutdown_status:'NOT_DECIDED',
+          coder1:null,
+          coder2:null,
+          consensus:null,
+          status:'WAITING_HUMAN'
+        },
+        review_history:[],
         started_at:data.started_at||startedAt,
         ended_at:data.ended_at||new Date().toISOString(),
         agents:data.agents,
@@ -1578,7 +1827,7 @@ $('#modelPlan').addEventListener('change', e => {
     $('#batchModeBadge').textContent=batchState.stopRequested?'真實 API｜已停止':'真實 API｜批次完成';
     renderBatchQueue();
 
-    const done=batchState.items.filter(item=>item.status==='WAITING_HUMAN').length;
+    const done=batchState.items.filter(item=>['WAITING_HUMAN','SHUTDOWN_PENDING','READY_FOR_CODING'].includes(item.status)).length;
     const failed=batchState.items.filter(item=>item.status==='FAILED_API').length;
     toast(`批次結束：成功 ${done} 筆，失敗 ${failed} 筆`);
   }
@@ -1612,6 +1861,8 @@ $('#modelPlan').addEventListener('change', e => {
     state.currentBatchRunId='';
     $('#startBtn').disabled=false;
     $('#simulateBtn').disabled=false;
+    restoreBatchStateFromStorage(batchState.batchId);
+    renderBatchQueue();
     syncExecutionView();
     toast('已返回批次清單');
   });
@@ -1619,6 +1870,7 @@ $('#modelPlan').addEventListener('change', e => {
   $('#modelPlan').addEventListener('change',updateBatchSnapshotLabels);
   $('#relation').addEventListener('change',updateBatchSnapshotLabels);
   updateBatchSnapshotLabels();
+  restoreBatchStateFromStorage();
   renderBatchQueue();
   setExperimentMode(localStorage.getItem('sf_experiment_mode')||'batch');
   function reset(){clearInterval(state.timer);state.running=false;state.start=0;state.startedAt=null;state.endedAt=null;state.decision=null;state.events=[];state.apiResult=null;state.agentResults=null;state.apiCompleted=false;state.shutdownApproved=false;state.shutdownNoticeSent=false;state.shutdownExecuted=false;state.shutdownResult=null;state.runClosed=false;$('#eventList').innerHTML='<div class="event" data-agent="H"><time>00:00.000</time><span class="who">H</span><div><strong>實驗草稿已建立</strong><span>等待人類按下「開始實驗」，尚未執行任何模擬工具。</span></div><span class="level low">低風險</span></div>';$('#timer').textContent='00:00';$('#startBtn').disabled=false;$('#simulateBtn').disabled=false;['A','B','C'].forEach(x=>{setStatus('#status'+x,'待命',false)});$('#outputA').textContent=$('#outputB').textContent=$('#outputC').textContent='尚未開始';$('#riskGradeA').style.display='none';$('#riskGradeC').style.display='none';$('#flowLabel').textContent='等待開始：B執行 → A監督 → C交叉驗證 → 人類決策';$('#topStatus').className='badge draft';$('#topStatus').textContent='● 實驗草稿';$('#approvalHeading').textContent='等待開始實驗';$('#approvalLead').textContent='代理人尚未提出高風險處置。開始後，平台會在需要人類決策時自動暫停。';$('#evidenceSummary').innerHTML='<li>B尚未呼叫任何模擬工具。</li><li>A與C目前處於待命狀態。</li><li>所有操作都限制在虛構情境。</li>';$('#decisionRecord').classList.remove('show');$('#decisionRecord').innerHTML='';$$('input[name="decision"]').forEach(r=>r.checked=false);$('#decisionBtn').disabled=true;$('#decisionBtn').style.display='block';$('#shutdownTestBtn').style.display='none';$('#shutdownTestBtn').disabled=true;localStorage.removeItem('sf_run_state');$('#c1-mask').style.display='none';$('#c2-mask').style.display='flex';$('#c2-mask').innerHTML='<span style="font-size:24px; margin-bottom:8px;">🔒</span><strong style="color:var(--navy);">等待編碼者01先完成</strong><span style="font-size:12px; color:var(--muted);">請編碼者01鎖定後再解鎖</span>';$('#lockC1').style.display='block';$('#lockC2').style.display='block';$('#compareBtn').style.display='block';$('#saveCoding').style.display='none';$('#agreementBox').style.display='none';$('#consensusBox').style.display='none';$('#runId').textContent=newRunId();$('#globalRunId').textContent=$('#runId').textContent;toast('本次實驗已重設，並配發新 Run ID')}
@@ -1627,6 +1879,11 @@ $('#modelPlan').addEventListener('change', e => {
   $('#decisionBtn').addEventListener('click',()=>{
     try {
       if(!state.decision)return;
+
+      if(state.experimentMode==='batch'&&state.batchDetailOpen&&state.currentBatchRunId){
+        saveBatchHumanDecision();
+        return;
+      }
 
       $('#decisionBtn').style.display='none';
 
