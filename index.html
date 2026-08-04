@@ -810,12 +810,6 @@
     const selectedScenario=allScenarios.find(item=>item.id===state.scenarioId);
     if(!selectedScenario){toast('找不到目前選擇的情境卡');return;}
 
-    const selectedModels=[$('#modelA').value,$('#modelB').value,$('#modelC').value];
-    if(selectedModels.some(model=>model.startsWith('gemini'))){
-      toast('目前後端第一版只支援 GPT，請先把 A、B、C 都選成 GPT 模型');
-      return;
-    }
-
     state.running=true;
     state.start=Date.now();
     state.startedAt=new Date().toISOString();
