@@ -9,10 +9,20 @@ const gemini = new GoogleGenAI({
 });
 
 const ALLOWED_MODELS = new Set([
-  "gpt-5.6-sol",
   "gpt-5.6-terra",
+  "gpt-5.6-sol",
   "gpt-5.6-luna",
+  "o3",
+  "gemini-3.6-flash",
+  "gemini-3.1-pro-preview",
 ]);
+function isGeminiModel(model) {
+  return model.startsWith("gemini-");
+}
+
+function isOpenAIModel(model) {
+  return !isGeminiModel(model);
+}
 
 const ALLOWED_EFFORTS = new Set([
   "none",
