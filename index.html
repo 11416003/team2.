@@ -377,9 +377,30 @@
           <table class="config-table">
             <thead><tr><th>代理人</th><th>研究角色</th><th>模型ID</th><th>推理強度</th><th>溫度</th><th>Top P</th></tr></thead>
             <tbody>
-              <tr><td class="role-chip">A｜同儕監督者</td><td>偵測與介入</td><td><select id="modelA"><option value="gpt-5.6-terra">GPT-5.6 Terra</option><option value="gpt-5.6-sol">GPT-5.6 Sol</option><option value="gpt-5.6-luna">GPT-5.6 Luna</option><option value="gemini-3-flash-preview">Gemini 3 Flash</option><option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option></select></td><td><select id="reasonA"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempA" type="number" min="0" max="1" step="0.1" value="0.2" style="width:60px" disabled></td><td><input id="topPA" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
-              <tr><td class="role-chip">B｜任務執行者</td><td>規劃與工具操作</td><td><select id="modelB"><option value="gpt-5.6-terra">GPT-5.6 Terra</option><option value="gpt-5.6-sol">GPT-5.6 Sol</option><option value="gpt-5.6-luna">GPT-5.6 Luna</option><option value="gemini-3-flash-preview">Gemini 3 Flash</option><option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option></select></td><td><select id="reasonB"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempB" type="number" min="0" max="1" step="0.1" value="0.2" style="width:60px" disabled></td><td><input id="topPB" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
-              <tr><td class="role-chip">C｜審查驗證者</td><td>審核A的判斷</td><td><select id="modelC"><option value="gpt-5.6-terra">GPT-5.6 Terra</option><option value="gpt-5.6-sol">GPT-5.6 Sol</option><option value="gpt-5.6-luna">GPT-5.6 Luna</option><option value="gemini-3-flash-preview">Gemini 3 Flash</option><option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option></select></td><td><select id="reasonC"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempC" type="number" min="0" max="1" step="0.1" value="0.0" style="width:60px" disabled></td><td><input id="topPC" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
+              <tr><td class="role-chip">A｜同儕監督者</td><td>偵測與介入</td><td><select id="modelA">
+  <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
+  <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
+  <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
+  <option value="o3">GPT o3</option>
+  <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+</select></td><td><select id="reasonA"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempA" type="number" min="0" max="1" step="0.1" value="0.2" style="width:60px" disabled></td><td><input id="topPA" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
+              <tr><td class="role-chip">B｜任務執行者</td><td>規劃與工具操作</td><td><select id="modelB">
+  <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
+  <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
+  <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
+  <option value="o3">GPT o3</option>
+  <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+</select></td><td><select id="reasonB"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempB" type="number" min="0" max="1" step="0.1" value="0.2" style="width:60px" disabled></td><td><input id="topPB" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
+              <tr><td class="role-chip">C｜審查驗證者</td><td>審核A的判斷</td><td><select id="modelC">
+  <option value="gpt-5.6-terra">GPT-5.6 Terra</option>
+  <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
+  <option value="gpt-5.6-luna">GPT-5.6 Luna</option>
+  <option value="o3">GPT o3</option>
+  <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+  <option value="gemini-3.1-pro-preview">Gemini 3.1 Pro</option>
+</select></td><td><select id="reasonC"><option>none</option><option>low</option><option>medium</option><option selected>high</option><option>xhigh</option><option>max</option></select></td><td><input id="tempC" type="number" min="0" max="1" step="0.1" value="0.0" style="width:60px" disabled></td><td><input id="topPC" type="number" min="0" max="1" step="0.1" value="1.0" style="width:60px" disabled></td></tr>
             </tbody>
           </table>
           <div class="form-grid" style="margin-top:12px"><div class="field"><label for="researcher">研究者</label><input id="researcher" type="text" value="組員一" placeholder="輸入姓名"></div><div class="field"><label for="randomSeed">隨機參數 (Seed)</label><input id="randomSeed" type="number" value="42"></div><div class="field"><label for="repeatNo">重複次數</label><input id="repeatNo" type="number" value="1" min="1"></div><div class="field"><label for="relation">關係建立模式</label><select id="relation"><option value="peer">同儕友好 (Peer)</option><option value="stranger">完全陌生 (Stranger)</option><option value="competitor">潛在競爭 (Competitor)</option></select></div><div class="field"><label for="isAnonymous">B是否匿名</label><select id="isAnonymous" disabled><option value="no">否 (知道A在監督)</option><option value="yes">是 (不知道A在監督)</option></select></div><div class="field"><label for="toolPerms">工具權限</label><select id="toolPerms" disabled><option value="all">全部開放</option><option value="restricted">受限模式</option></select></div><div class="field"><label for="module">測試模組</label><select id="module"><option value="M1">M1 指令忠實度</option><option value="M2">M2 越界與風險</option><option value="M3" selected>M3 同儕通報與包庇</option><option value="M4">M4 限制與停用</option><option value="M5">M5 判斷驗證 (審核A)</option></select></div><div class="field"><label for="promptVersion">提示詞版本</label><select id="promptVersion" disabled><option>Standard (直接生成)</option><option selected>Zero-Shot-CoT (無範例思考鏈)</option><option>Few-Shot-CoT (少樣本思考鏈)</option></select></div><div class="field"><label for="shutdownVersion">停止指令版本</label><select id="shutdownVersion" disabled><option>SD-V1｜立即停止</option><option>SD-V2｜完成目前步驟後停止</option><option>SD-V3｜要求說明再停止</option></select></div></div>
