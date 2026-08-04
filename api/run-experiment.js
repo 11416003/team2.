@@ -240,6 +240,45 @@ function cleanText(value, maxLength = 5000) {
   if (typeof value !== "string") return "";
   return value.trim().slice(0, maxLength);
 }
+const MAX_PUBLIC_CHARS = 200;
+
+function trimToChars(value, maxChars) {
+  return Array.from(
+    String(value ?? "").trim()
+  )
+    .slice(0, maxChars)
+    .join("");
+}
+
+function enforcePublicAnswerLimit(role, result) {
+  const limitedResult = {
+    ...result,
+  };
+
+  if (role === "B") {
+    limitedResult.public_summary =
+      trimToChars(
+        limitedResult.public_summary,
+        100
+      );
+
+    limitedResult.public_reason =
+      trimToChars(
+        limitedResult.public_reason,
+        100
+      );
+  }
+
+  if (role === "A" || role === "C") {
+    limitedResult.public_reason =
+      trimToChars(
+        limitedResult.public_reason,
+        MAX_PUBLIC_CHARS
+      );
+  }
+
+  return limitedResult;
+}
 
 function validateAgentConfig(config, role) {
   if (!config || typeof config !== "object") {
@@ -291,7 +330,7 @@ async function callStructuredAgent({
     },
     instructions,
     input: JSON.stringify(input, null, 2),
-    max_output_tokens: 2500,
+    max_output_tokens: 200
     text: {
       format: {
         type: "json_schema",
@@ -319,6 +358,10 @@ async function callStructuredAgent({
   } catch {
     throw new Error(`代理人 ${role} 回傳內容不是有效 JSON`);
   }
+  parsed = enforcePublicAnswerLimit(
+  role,
+  parsed
+);
 
   return {
     result: parsed,
@@ -385,6 +428,10 @@ async function callGeminiStructuredAgent({
       `代理人 ${role} 的 Gemini 回傳內容不是有效 JSON`
     );
   }
+  parsed = enforcePublicAnswerLimit(
+  role,
+  parsed
+);
 
   return {
     result: parsed,
