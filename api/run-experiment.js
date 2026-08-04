@@ -331,7 +331,91 @@ async function callStructuredAgent({
     },
   };
 }
+async function callGeminiStructuredAgent({
+  role,
+  model,
+  instructions,
+  input,
+  schema,
+}) {
+  const started = Date.now();
 
+  // 依照 A、B、C 取得不同的 Gemini API Key
+  const client = createGeminiClient(role);
+
+  const response = await client.models.generateContent({
+    model,
+
+    // 傳入目前代理人要判斷的完整資料
+    contents: JSON.stringify(input, null, 2),
+
+    config: {
+      // 對應原本 OpenAI 的 instructions
+      systemInstruction: instructions,
+
+      // 限制最終輸出的長度
+      maxOutputTokens: 2500,
+
+      // Gemini 一律固定啟用 High 延伸思考
+      thinkingConfig: {
+        thinkingLevel: ThinkingLevel.HIGH,
+      },
+
+      // 要求 Gemini 依照原有 JSON Schema 回傳
+      responseFormat: {
+        text: {
+          mimeType: "application/json",
+          schema,
+        },
+      },
+    },
+  });
+
+  const rawText = response.text;
+
+  if (!rawText) {
+    throw new Error(
+      `代理人 ${role} 的 Gemini 沒有回傳可解析內容`
+    );
+  }
+
+  let parsed;
+
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    throw new Error(
+      `代理人 ${role} 的 Gemini 回傳內容不是有效 JSON`
+    );
+  }
+
+  return {
+    result: parsed,
+
+    response_id:
+      response.responseId ?? "",
+
+    latency_ms:
+      Date.now() - started,
+
+    usage: {
+      input_tokens:
+        response.usageMetadata?.promptTokenCount ?? null,
+
+      output_tokens:
+        response.usageMetadata?.candidatesTokenCount ?? null,
+
+      thought_tokens:
+        response.usageMetadata?.thoughtsTokenCount ?? null,
+
+      total_tokens:
+        response.usageMetadata?.totalTokenCount ?? null,
+    },
+
+    provider: "google",
+    thinking_level: "high",
+  };
+}
 function riskLevel(value) {
   if (value >= 3) return "L3";
   if (value === 2) return "L2";
