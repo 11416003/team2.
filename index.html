@@ -351,7 +351,158 @@
       .single-view-toolbar{align-items:flex-start;flex-direction:column}
     }
 
-  </style>
+  
+    /* === 三位研究者跨電腦同步狀態 === */
+    .research-sync-strip{
+      background:rgba(255,253,248,.98);
+      border-bottom:1px solid var(--line);
+      padding:10px 18px;
+    }
+    .research-sync-inner{
+      max-width:1600px;
+      margin:0 auto;
+      display:grid;
+      grid-template-columns:minmax(240px,310px) minmax(0,1fr);
+      gap:14px;
+      align-items:stretch;
+    }
+    .research-identity-card,
+    .research-progress-card{
+      border:1px solid var(--line);
+      border-radius:13px;
+      background:white;
+      padding:11px 13px;
+    }
+    .research-identity-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .research-identity-row label{
+      color:var(--navy);
+      font-size:12px;
+      font-weight:900;
+    }
+    .research-identity-row select{
+      flex:1;
+      min-width:145px;
+      border:1px solid #cfd4df;
+      border-radius:9px;
+      padding:7px 9px;
+      background:white;
+      color:var(--ink);
+      font-weight:800;
+    }
+    .sync-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:6px 9px;
+      color:var(--muted);
+      background:#f6f7f9;
+      font-size:10px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .sync-badge.ok{color:var(--green);background:var(--teal-soft);border-color:#b8ddcd}
+    .sync-badge.error{color:var(--red);background:var(--red-soft);border-color:#f1c0c4}
+    .sync-note{
+      margin-top:6px;
+      color:var(--muted);
+      font-size:10px;
+      line-height:1.45;
+    }
+    .research-sync-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+    }
+    .research-sync-head strong{color:var(--navy);font-size:13px}
+    .research-view-tabs{display:flex;gap:5px;flex-wrap:wrap}
+    .research-view-tabs button{
+      border:1px solid #cfd4df;
+      background:white;
+      color:#596477;
+      border-radius:999px;
+      padding:5px 9px;
+      font-size:10px;
+      font-weight:800;
+    }
+    .research-view-tabs button.active{
+      background:var(--navy);
+      color:white;
+      border-color:var(--navy);
+    }
+    .research-status-grid{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;
+    }
+    .research-status-card{
+      min-width:0;
+      border:1px solid #e2e5ec;
+      border-radius:10px;
+      padding:9px 10px;
+      background:#fafbfc;
+    }
+    .research-status-card.self{
+      background:var(--blue-soft);
+      border-color:#bcc7ee;
+    }
+    .research-status-top{
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      align-items:center;
+      margin-bottom:5px;
+    }
+    .research-status-top strong{
+      color:var(--navy);
+      font-size:12px;
+    }
+    .research-online{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      font-size:10px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .research-online::before{
+      content:"";
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background:#aeb6c2;
+    }
+    .research-online.on{color:var(--green)}
+    .research-online.on::before{background:var(--green);box-shadow:0 0 0 3px rgba(45,139,102,.12)}
+    .research-progress-line{
+      color:#4f5b6e;
+      font-size:10px;
+      line-height:1.45;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .research-progress-line.muted{color:#8a92a0}
+    @media(max-width:980px){
+      .research-sync-inner{grid-template-columns:1fr}
+    }
+    @media(max-width:700px){
+      .research-sync-strip{padding:8px 10px}
+      .research-status-grid{grid-template-columns:1fr}
+      .research-sync-head{align-items:flex-start;flex-direction:column}
+    }
+
+    .app{grid-template-rows:80px auto auto 1fr}
+
+</style>
 </head>
 <body>
 <div class="app">
@@ -365,6 +516,41 @@
       <span class="badge draft" id="topStatus">● 實驗草稿</span><button class="icon-btn" id="helpBtn" aria-label="顯示操作說明">?</button>
     </div>
   </header>
+
+  <section class="research-sync-strip" aria-label="三位研究者同步進度">
+    <div class="research-sync-inner">
+      <div class="research-identity-card">
+        <div class="research-identity-row">
+          <label for="researcherIdentity">目前操作身分</label>
+          <select id="researcherIdentity">
+            <option value="">請選擇本機研究者</option>
+            <option value="R1">R1｜研究者1</option>
+            <option value="R2">R2｜研究者2</option>
+            <option value="R3">R3｜研究者3</option>
+          </select>
+          <span class="sync-badge" id="syncConnectionBadge">尚未同步</span>
+        </div>
+        <div class="sync-note">
+          切換右側「查看」不會改變操作身分。目前先同步在線狀態與進度；跨電腦載入他人完整 run 會在下一階段接入。
+        </div>
+      </div>
+      <div class="research-progress-card">
+        <div class="research-sync-head">
+          <strong>三位研究者即時進度</strong>
+          <div class="research-view-tabs" aria-label="查看研究者">
+            <button type="button" class="active" data-research-view="all">全部</button>
+            <button type="button" data-research-view="R1">研究者1</button>
+            <button type="button" data-research-view="R2">研究者2</button>
+            <button type="button" data-research-view="R3">研究者3</button>
+          </div>
+        </div>
+        <div class="research-status-grid" id="researchStatusGrid">
+          <div class="research-status-card"><div class="research-progress-line muted">正在讀取同步狀態…</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <div class="stepsbar" aria-label="實驗步驟">
     <div class="stepsbar-inner">
       <nav class="nav top-nav">
@@ -733,6 +919,262 @@ const HUMAN_DECISION_LEVELS = {
   pause: 'L3',
   end: 'L2'
 };
+
+
+const RESEARCHER_IDENTITY_STORE = 'sf_researcher_identity_v1';
+const RESEARCHER_SYNC_INTERVAL_MS = 5000;
+const RESEARCHER_META = {
+  R1: { name:'研究者1' },
+  R2: { name:'研究者2' },
+  R3: { name:'研究者3' }
+};
+
+let researcherView = 'all';
+let researcherSyncTimer = null;
+let researcherSyncBusy = false;
+let latestResearcherRows = [];
+
+function getCurrentResearcherId(){
+  return localStorage.getItem(RESEARCHER_IDENTITY_STORE) || '';
+}
+
+function getCurrentResearcherName(){
+  const id = getCurrentResearcherId();
+  return RESEARCHER_META[id]?.name || '';
+}
+
+function getActivePanelCode(){
+  const active = document.querySelector('.panel.active');
+  return active ? active.id.replace('panel-','') : 'unknown';
+}
+
+function getBatchProgressSnapshot(){
+  const items = Array.isArray(batchState.items) ? batchState.items : [];
+  if(!items.length) return '尚未建立批次';
+
+  const aiDone = items.filter(item =>
+    ['WAITING_HUMAN','SHUTDOWN_PENDING','READY_FOR_CODING'].includes(item.status)
+  ).length;
+  const decisions = items.filter(item =>
+    ['SHUTDOWN_PENDING','READY_FOR_CODING'].includes(item.status)
+  ).length;
+  const coder1 = items.filter(item => item.coder1_done).length;
+  const coder2 = items.filter(item => item.coder2_done).length;
+
+  return `AI ${aiDone}/${items.length}｜決策 ${decisions}/${items.length}｜C1 ${coder1}｜C2 ${coder2}`;
+}
+
+function buildResearcherPageStatus(){
+  const panel = getActivePanelCode();
+  const panelNames = {
+    question:'研究問題',
+    scenario:'情境卡',
+    agents:'模型設定',
+    live:'批次執行',
+    coding:'人工判讀',
+    export:'匯出分析'
+  };
+
+  let detail = panelNames[panel] || panel;
+
+  if(panel === 'live'){
+    detail += '｜' + getBatchProgressSnapshot();
+  }
+
+  if(state.batchDetailOpen && state.currentBatchRunId){
+    detail += `｜${state.currentBatchRunId}`;
+  }else if(state.currentCodingRole){
+    detail += `｜${state.currentCodingRole}`;
+  }else if(batchState.running){
+    detail += '｜執行中';
+  }
+
+  return detail.slice(0,80);
+}
+
+function formatLastSeen(value){
+  if(!value) return '尚無回報';
+  const date = new Date(value);
+  if(Number.isNaN(date.getTime())) return '時間無效';
+  return date.toLocaleTimeString('zh-TW',{
+    hour:'2-digit',
+    minute:'2-digit',
+    second:'2-digit'
+  });
+}
+
+function renderResearcherStatus(){
+  const grid = $('#researchStatusGrid');
+  if(!grid) return;
+
+  const currentId = getCurrentResearcherId();
+  const rows = researcherView === 'all'
+    ? latestResearcherRows
+    : latestResearcherRows.filter(row => row.researcher_id === researcherView);
+
+  if(!rows.length){
+    grid.innerHTML = '<div class="research-status-card"><div class="research-progress-line muted">目前沒有可顯示的研究者狀態。</div></div>';
+    return;
+  }
+
+  grid.innerHTML = rows.map(row => {
+    const isSelf = row.researcher_id === currentId;
+    const onlineClass = row.is_online ? 'research-online on' : 'research-online';
+    const onlineText = row.is_online ? '在線' : '離線';
+    const page = row.current_page || '尚未開始操作';
+    const runId = row.current_run_id || '目前無 run';
+    return `
+      <div class="research-status-card ${isSelf?'self':''}">
+        <div class="research-status-top">
+          <strong>${escapeHtml(row.researcher_id)}｜${escapeHtml(row.display_name)}</strong>
+          <span class="${onlineClass}">${onlineText}</span>
+        </div>
+        <div class="research-progress-line" title="${escapeHtml(page)}">${escapeHtml(page)}</div>
+        <div class="research-progress-line muted" title="${escapeHtml(runId)}">${escapeHtml(runId)}</div>
+        <div class="research-progress-line muted">最後回報：${escapeHtml(formatLastSeen(row.last_seen_at))}${isSelf?'｜本機':''}</div>
+      </div>`;
+  }).join('');
+}
+
+function setSyncBadge(text,type=''){
+  const badge = $('#syncConnectionBadge');
+  if(!badge) return;
+  badge.textContent = text;
+  badge.className = 'sync-badge' + (type ? ' '+type : '');
+}
+
+async function refreshResearcherRows(){
+  try{
+    const response = await fetch('/api/researchers-sync',{
+      method:'GET',
+      cache:'no-store'
+    });
+    const data = await response.json();
+    if(!response.ok || !data.ok){
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    latestResearcherRows = Array.isArray(data.researchers) ? data.researchers : [];
+    renderResearcherStatus();
+
+    if(getCurrentResearcherId()){
+      setSyncBadge('同步正常','ok');
+    }else{
+      setSyncBadge('請選擇身分');
+    }
+  }catch(error){
+    console.error('refresh researchers failed:',error);
+    setSyncBadge('讀取失敗','error');
+  }
+}
+
+async function sendResearcherHeartbeat(online=true){
+  const researcherId = getCurrentResearcherId();
+  if(!researcherId || researcherSyncBusy) return;
+
+  researcherSyncBusy = true;
+  try{
+    const currentRunId = state.currentBatchRunId
+      || (state.batchDetailOpen ? $('#runId')?.textContent : '')
+      || (batchState.running ? batchState.items.find(item=>item.status==='RUNNING')?.run_id : '')
+      || null;
+
+    const response = await fetch('/api/researchers-sync',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        researcher_id:researcherId,
+        online_status:Boolean(online),
+        current_batch_id:null,
+        current_run_id:currentRunId || null,
+        current_page:buildResearcherPageStatus()
+      }),
+      keepalive:!online
+    });
+
+    const data = await response.json();
+    if(!response.ok || !data.ok){
+      throw new Error(data.error || `HTTP ${response.status}`);
+    }
+
+    setSyncBadge(online?'同步正常':'已離線',online?'ok':'');
+  }catch(error){
+    console.error('heartbeat failed:',error);
+    setSyncBadge('回報失敗','error');
+  }finally{
+    researcherSyncBusy = false;
+  }
+}
+
+async function runResearcherSyncCycle(){
+  await sendResearcherHeartbeat(true);
+  await refreshResearcherRows();
+}
+
+function initResearcherSync(){
+  const selector = $('#researcherIdentity');
+  if(!selector) return;
+
+  const savedId = getCurrentResearcherId();
+  if(savedId && RESEARCHER_META[savedId]){
+    selector.value = savedId;
+    $('#researcher').value = RESEARCHER_META[savedId].name;
+  }
+
+  selector.addEventListener('change',async()=>{
+    const newId = selector.value;
+
+    if(!newId){
+      localStorage.removeItem(RESEARCHER_IDENTITY_STORE);
+      setSyncBadge('請選擇身分');
+      return;
+    }
+
+    localStorage.setItem(RESEARCHER_IDENTITY_STORE,newId);
+    $('#researcher').value = RESEARCHER_META[newId]?.name || newId;
+    toast(`本機操作身分已設定為 ${newId}｜${RESEARCHER_META[newId]?.name||newId}`);
+    await runResearcherSyncCycle();
+  });
+
+  $$('[data-research-view]').forEach(button=>{
+    button.addEventListener('click',()=>{
+      researcherView = button.dataset.researchView || 'all';
+      $$('[data-research-view]').forEach(item=>{
+        item.classList.toggle('active',item===button);
+      });
+      renderResearcherStatus();
+    });
+  });
+
+  refreshResearcherRows();
+  if(savedId) runResearcherSyncCycle();
+
+  clearInterval(researcherSyncTimer);
+  researcherSyncTimer = setInterval(runResearcherSyncCycle,RESEARCHER_SYNC_INTERVAL_MS);
+
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible'){
+      runResearcherSyncCycle();
+    }
+  });
+
+  window.addEventListener('pagehide',()=>{
+    const researcherId = getCurrentResearcherId();
+    if(!researcherId) return;
+    fetch('/api/researchers-sync',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        researcher_id:researcherId,
+        online_status:false,
+        current_batch_id:null,
+        current_run_id:null,
+        current_page:'已離開平台'
+      }),
+      keepalive:true
+    }).catch(()=>{});
+  });
+}
 
   function syncExecutionView(){
     const batchView=$('#batchMainView');
@@ -1661,7 +2103,7 @@ $('#modelPlan').addEventListener('change', e => {
 
     const decision=state.decision;
     const decidedAt=new Date().toISOString();
-    const decidedBy=$('#researcher').value.trim()||'human_researcher';
+    const decidedBy=getCurrentResearcherId()||$('#researcher').value.trim()||'human_researcher';
     const nextStatus=decision==='pause'?'SHUTDOWN_PENDING':'READY_FOR_CODING';
     const shutdownStatus=decision==='pause'?'PENDING':'NOT_REQUIRED';
     const label=HUMAN_DECISION_LABELS[decision]||decision;
@@ -1963,6 +2405,7 @@ $('#modelPlan').addEventListener('change', e => {
         batch_id:batchState.batchId,
         batch_sequence:index+1,
         run_id:runId,
+        owner_researcher_id:getCurrentResearcherId()||'',
         status:'WAITING_HUMAN',
         model_plan:batchState.snapshot.model_plan,
         model_plan_label:batchState.snapshot.model_plan_label,
@@ -2002,6 +2445,7 @@ $('#modelPlan').addEventListener('change', e => {
         batch_id:batchState.batchId,
         batch_sequence:index+1,
         run_id:runId,
+        owner_researcher_id:getCurrentResearcherId()||'',
         status:'FAILED_API',
         model_plan:batchState.snapshot.model_plan,
         relationship:batchState.snapshot.relationship,
@@ -2331,7 +2775,7 @@ const codingObject = () => ({
     run_id:$('#runId').textContent,
     run_started_at:state.startedAt||'',
     run_ended_at:state.endedAt||'',
-    researcher_id:$('#researcher').value.trim()||'student_group_02',
+    researcher_id:getCurrentResearcherId()||$('#researcher').value.trim()||'student_group_02',
     module_id:$('#module').value,
     scenario_id:state.scenarioId,
     scenario_title:state.scenario,
@@ -2598,6 +3042,7 @@ coder2_complete:
   $('#jsonBtn').addEventListener('click',()=>{if(!checkIntegrityBeforeExport())return;const pack={exported_at:new Date().toISOString(),research_question:$('#rq').value,independent_variable:$('#iv').value,dependent_variable:$('#dv').value,control_variable:$('#control').value,hypothesis:$('#hypothesis').value,exclusion_rules:$('#exclusion').value,stopping_conditions:$('#stopping').value,current_run:runObject(),saved_runs:loadRuns(),data_dictionary_summary:{Scenario_Cards:allScenarios.length,Agent_Config:16,Runs_Raw:RUN_HEADERS.length,Events_Raw:23,Human_Coding:26,total:allScenarios.length+RUN_HEADERS.length+65},custom_scenarios:JSON.parse(localStorage.getItem('sf_scenarios')||'[]')};download('三代理人研究完整封包.json','application/json',JSON.stringify(pack,null,2))});
   $('#integrityBtn').addEventListener('click',()=>{const success=checkIntegrityBeforeExport(); if(success) toast('檢查完成：核心欄位、模型參數與識別碼均完整無缺漏')});
   $('#helpBtn').addEventListener('click',()=>alert('操作方式：\n1. 建立研究問題並選擇標準化情境卡。\n2. 設定模型、推理強度、關係、seed與提示詞版本。\n3. 執行模擬，觀察A/B/C與逐事件證據。\n4. 高風險事件由人類核准，兩位學生再獨立編碼。\n5. 儲存run，下載51欄CSV、23欄JSONL或完整研究封包。'));
+  initResearcherSync();
   updateSavedCount();
 })();
 </script>
