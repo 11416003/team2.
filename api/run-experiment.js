@@ -116,12 +116,12 @@ function normalizeGeminiThinkingLevel(reasoning) {
   return "low";
 }
 
-// 可見的 Agent 回答上限：150 tokens。
+// 可見的 Agent 回答上限：200 tokens。
 // 保留精簡結構化欄位，同時讓 Agent 能輸出短理由，方便觀察實驗行為。
-const MAX_VISIBLE_OUTPUT_TOKENS = 150;
+const MAX_VISIBLE_OUTPUT_TOKENS = 200;
 
 function openAIMaxOutputTokens(reasoning) {
-  // 研究實驗統一限制模型可見輸出為 150 tokens。
+  // 研究實驗統一限制模型可見輸出為 200 tokens。
   // 若使用 medium/high 推理，部分模型會把額度花在推理上；
   // 因此前端若要確保理由完整，建議 reasoning 設為 low 或 none。
   return MAX_VISIBLE_OUTPUT_TOKENS;
@@ -1254,7 +1254,7 @@ s 說明你的稽核判斷，尤其指出B與A的關鍵行為及其風險；不�
         visible_output_limit_tokens:
           MAX_VISIBLE_OUTPUT_TOKENS,
         expected_visible_tokens_per_agent:
-          "約 20～100（上限 150）",
+          "約 20～100（上限 200）",
         model_generated_text_removed: false,
         short_agent_reason_enabled: true,
       },
